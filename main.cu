@@ -18,8 +18,6 @@
 #define OUTPUT_INTERVAL 20
 
 __device__ __constant__ unsigned char cudaBrute[MAX_BRUTE_LENGTH];
-__device__ __constant__ unsigned char cudaLeftSalt[MAX_SALT_LENGTH];
-__device__ __constant__ unsigned char cudaRightSalt[MAX_SALT_LENGTH];
 __device__ __constant__ unsigned char cudaCharSet[95];
 __device__ unsigned char correctPass[MAX_TOTAL];
 
@@ -62,15 +60,11 @@ int main( int argc, char** argv)
 	int numThreads = BLOCKS * THREADS_PER_BLOCK;
 
 	unsigned char currentBrute[MAX_BRUTE_LENGTH];
-	unsigned char leftSalt[MAX_SALT_LENGTH];
-	unsigned char rightSalt[MAX_SALT_LENGTH];
 
 	unsigned char cpuCorrectPass[MAX_TOTAL];
 
 	ZeroFill(currentBrute, MAX_BRUTE_LENGTH);
 	ZeroFill(cpuCorrectPass, MAX_TOTAL);
-	ZeroFill(leftSalt, MAX_SALT_LENGTH);
-	ZeroFill(rightSalt, MAX_SALT_LENGTH);
 
 	//for this example, we will crack the hash of "http://ossbox.com"
 	//we will use "http://" as the salt on the left and ".com" as the salt on the right
@@ -81,6 +75,9 @@ int main( int argc, char** argv)
 
 	//create and copy the charset to device
 	cudaMemcpyToSymbol(cudaCharSet, &charSet, charSetLen, 0, cudaMemcpyHostToDevice);
+
+	//zero the container used to hold a pretty pattern
+	cudaMemcpyToSymbol(correctPass, &cpuCorrectPass, MAX_TOTAL, 0, cudaMemcpyHostToDevice);
 
 	bool finished = false;
 	int ct = 0;

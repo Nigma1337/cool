@@ -4,16 +4,16 @@
 #include <stdint.h>
 
 #define N_PERFECT_MATCH 11
-#define N_NICE_MATCH 10
+#define N_NICE_MATCH 4
 #define N_GOLD_MD5 7
 #define N_MD5_OF_DIGITS 32
 #define N_MD5_OF_LETTERS 23
 #define N_PI_MD5 9
 #define N_E_MD5 9
 
-typedef struct {
+struct md5_digest_t{
     uint8_t data[16];
-} md5_digest_t;
+};
 
 __device__ bool is_perfect_match(char *hash) {
     for (int i = 1; i < 32; ++i) {
@@ -94,6 +94,25 @@ __device__ void IncrementBruteGPU(unsigned char* ourBrute, uint charSetLen, uint
 	}
 }
 
+__device__ void u32_to_4_u8s(uint c1, uint c2, uint c3, uint c4, uint8_t* buffer) {
+        buffer[0] = (char)c1 >> 24;
+        buffer[1] = (char)c1 >> 16 & 0xFF;
+        buffer[2] = (char)c1 >> 8 & 0xFF;
+        buffer[3] = (char)c1 & 0xFF;
+        buffer[4] = (char)c2 >> 24;
+        buffer[5] = (char)c2 >> 16 & 0xFF;
+        buffer[6] = (char)c2 >> 8 & 0xFF;
+        buffer[7] = (char)c2 & 0xFF;
+        buffer[8] = (char)c3 >> 24;
+        buffer[9] = (char)c3 >> 16 & 0xFF;
+        buffer[10] = (char)c3 >> 8 & 0xFF;
+        buffer[11] = (char)c3 & 0xFF;
+        buffer[12] = (char)c4 >> 24;
+        buffer[13] = (char)c4 >> 16 & 0xFF;
+        buffer[14] = (char)c4 >> 8 & 0xFF;
+        buffer[15] = (char)c4 & 0xFF;
+}
+
 __global__ void crack(uint numThreads, uint charSetLen, uint bruteLength)
 {
 	//compute our index number
@@ -121,8 +140,22 @@ __global__ void crack(uint numThreads, uint charSetLen, uint bruteLength)
 		}
 
 		uint c1 = 0, c2 = 0, c3 = 0, c4 = 0;
+        uint8_t buffer = 0;
 		//get the md5 hash of the word
 		md5_vfy(word,totalLen, &c1, &c2, &c3, &c4);
+        
+        //convert md5 thingies into other thingies for easier comparison
+        u32_to_4_u8s( c1, c2, c3, c4, &buffer);
+        
+        struct md5_digest_t digest = {buffer};
+        //check nice
+        if(check_nice_match(digest) >= N_NICE_MATCH){
+            int j;
+            for(j=0; j < 32; j++){
+                correctPass[j] = j;
+            }
+            correctPass[totalLen] = 0;
+        }
 		IncrementBruteGPU(ourBrute, charSetLen, bruteLength, numThreads);
 	}
 }
